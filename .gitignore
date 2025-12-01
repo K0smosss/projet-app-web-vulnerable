@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Testing
+coverage/
+
+# Production
+build/
+dist/
+
+# Misc
+.DS_Store
+*.log
+
+# NOTE: .env devrait être ici mais on le laisse pour montrer la vulnérabilité
+.env
+*.sh
+*.kals.*

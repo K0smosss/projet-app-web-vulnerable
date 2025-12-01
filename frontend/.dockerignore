@@ -1,0 +1,31 @@
+# Secrets et configuration locale
+.env
+.env.*
+*.env
+
+# Git
+.git
+.gitignore
+.github
+
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+build/
+
+# Documentation
+README.md
+*.md
+
+# Tests
+src/**/*.test.js
+src/**/*.test.jsx
+coverage/
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# React
+.eslintcache

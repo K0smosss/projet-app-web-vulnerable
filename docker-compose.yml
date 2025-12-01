@@ -1,0 +1,36 @@
+services:
+  mongodb:
+    image: mongo:5.0
+    container_name: ecommerce-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  backend:
+    build: ./backend
+    container_name: ecommerce-backend
+    ports:
+      - "5001:5001"
+    depends_on:
+      - mongodb
+    environment:
+      - NODE_ENV=development
+      - JWT_SECRET=my-super-secret-jwt-key-12345
+      - SESSION_SECRET=my-session-secret-key
+      - MONGODB_URI=mongodb://mongodb:27017/ecommerce
+
+  frontend:
+    build: ./frontend
+    container_name: ecommerce-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://localhost:5001
+      - REACT_APP_API_KEY=frontend-api-key-123456
+
+volumes:
+  mongodb_data:
+    driver: local
