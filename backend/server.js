@@ -3,19 +3,49 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const session = require('express-session');
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const sanitizeHtml = require('sanitize-html');
+require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = 5001;
 
-const JWT_SECRET = process.env.JWT_SECRET || "my-super-secret-jwt-key-12345";
-const SESSION_SECRET = process.env.SESSION_SECRET || "my-session-secret-key";
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/ecommerce";
-const ADMIN_API_KEY = "admin-key-123456";
+const JWT_SECRET = process.env.JWT_SECRET;
+const SESSION_SECRET = process.env.SESSION_SECRET;
+const MONGODB_URI = process.env.MONGODB_URI;
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 
 app.use(cors({
     origin: '*',
     credentials: true
 }));
+
+function requireAuth(req, res, next) {
+    const header = req.headers.authorization;
+
+    if (!header) {
+        return res.status(401).json({ message: 'Token manquant' });
+    }
+
+    const token = header.split(" ")[1];
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (e) {
+        return res.status(401).json({ message: 'Token invalide' });
+    }
+}
+
+function requireAdmin(req, res, next) {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "laccès est interdit (admin uniquement)" });
+    }
+    next();
+}
+
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -39,7 +69,7 @@ db.orders = [];
 db.users.push({
     id: 1,
     username: 'admin',
-    password: 'admin123',
+    password: bcrypt.hashSync('admin123', 10),
     email: 'admin@ecommerce.com',
     role: 'admin',
     apiKey: ADMIN_API_KEY
@@ -48,7 +78,7 @@ db.users.push({
 db.users.push({
     id: 2,
     username: 'user',
-    password: 'user123',
+    password: bcrypt.hashSync('user123', 10),
     email: 'user@example.com',
     role: 'customer',
     creditCard: '4532-1234-5678-9010'
@@ -66,12 +96,15 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/api/products/search', (req, res) => {
-    const query = req.query.q;
+    const query = (req.query.q || "").toLowerCase().trim();
 
     try {
-        const searchCode = `db.products.filter(p => p.name.toLowerCase().includes('${query}'.toLowerCase()))`;
-        const results = eval(searchCode);
+        const results = db.products.filter(p =>
+            p.name.toLowerCase().includes(query)
+        );
+        
         res.json(results);
+        
     } catch(e) {
         res.status(500).json({
             error: e.message,
@@ -80,13 +113,33 @@ app.get('/api/products/search', (req, res) => {
     }
 });
 
-app.post('/api/register', (req, res) => {
+app.post('/api/register', async (req, res) => {
     const { username, password, email } = req.body;
+
+    const existingUser = db.users.find(
+        u => u.username === username || u.email === email
+    );
+
+    if (existingUser) {
+        return res.status(400).json({
+            success: false,
+            message: 'Nom d’utilisateur ou email déjà utilisé'
+        });
+    }
+
+    if (password.length < 8) {
+        return res.status(400).json({
+            success: false,
+            message: 'Mot de passe trop court ! Merci dutiliser un mot de passe de 8 caractères minimum'
+        })
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = {
         id: db.users.length + 1,
         username: username,
-        password: password,
+        password: hashedPassword,
         email: email,
         role: 'customer'
     };
@@ -100,19 +153,23 @@ app.post('/api/register', (req, res) => {
     });
 });
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
 
     const query = `username = '${username}' AND password = '${password}'`;
 
-    const user = db.users.find(u => {
-        if (username.includes("' OR '1'='1")) {
-            return true;
-        }
-        return u.username === username && u.password === password;
-    });
+    const user = db.users.find(u => u.username === username);
+    
+    if (!user) {
+        return res.status(401).json({
+            success: false,
+            message:'Identifiants incorrects'
+        })
+    }
 
-    if (user) {
+    const compare = await bcrypt.compare(password, user.password);
+
+    if (compare) {
         const jwt = require('jsonwebtoken');
         const token = jwt.sign(
             {
@@ -138,10 +195,6 @@ app.post('/api/login', (req, res) => {
     }
 });
 
-app.get('/api/users', (req, res) => {
-    res.json(db.users);
-});
-
 app.get('/api/users/:id', (req, res) => {
     const userId = req.params.id;
 
@@ -156,7 +209,13 @@ app.get('/api/users/:id', (req, res) => {
 
 app.post('/api/products/:id/review', (req, res) => {
     const productId = parseInt(req.params.id);
-    const { rating, comment } = req.body;
+    const { rating } = req.body;
+    let { comment } = req.body;
+    
+    comment = sanitizeHtml(comment, {
+        allowedTags: [],
+        allowedAttributes: {}
+    })
 
     const review = {
         id: Date.now(),
@@ -203,9 +262,9 @@ app.post('/api/checkout', (req, res) => {
 
         const order = {
             id: db.orders.length + 1,
-            userId: userId,
-            productId: productId,
-            quantity: quantity,
+            userId,
+            productId,
+            quantity,
             total: product.price * quantity,
             creditCard: creditCard,
             date: new Date()
@@ -224,7 +283,7 @@ app.post('/api/checkout', (req, res) => {
     }
 });
 
-app.get('/api/admin/stats', (req, res) => {
+app.get('/api/admin/stats', requireAuth, requireAdmin, (req, res) => {
     res.json({
         totalUsers: db.users.length,
         totalProducts: db.products.length,
@@ -246,18 +305,6 @@ app.get('/api/files/:filename', (req, res) => {
     }
 });
 
-app.get('/api/debug', (req, res) => {
-    res.json({
-        env: process.env,
-        secrets: {
-            JWT_SECRET: JWT_SECRET,
-            SESSION_SECRET: SESSION_SECRET,
-            ADMIN_API_KEY: ADMIN_API_KEY
-        },
-        database: db
-    });
-});
-
 app.get('/', (req, res) => {
     res.json({
         message: 'E-Commerce API',
@@ -266,13 +313,11 @@ app.get('/', (req, res) => {
             'GET /api/products/search?q=query',
             'POST /api/register',
             'POST /api/login',
-            'GET /api/users',
             'GET /api/users/:id',
             'POST /api/products/:id/review',
             'POST /api/checkout',
             'GET /api/admin/stats',
-            'GET /api/files/:filename',
-            'GET /api/debug'
+            'GET /api/files/:filename'
         ]
     });
 });

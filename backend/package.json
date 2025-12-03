@@ -7,19 +7,26 @@
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "keywords": ["ecommerce", "vulnerable", "devsecops", "education"],
+  "keywords": [
+    "ecommerce",
+    "vulnerable",
+    "devsecops",
+    "education"
+  ],
   "author": "Projet Pédagogique",
   "license": "MIT",
   "dependencies": {
-    "express": "4.17.1",
+    "bcrypt": "^6.0.0",
     "body-parser": "1.19.0",
     "cors": "2.8.5",
-    "express-session": "1.17.1",
-    "mongoose": "5.12.3",
-    "jsonwebtoken": "8.5.1",
-    "dotenv": "8.2.0"
+    "dotenv": "8.2.0",
+    "express": "^4.22.1",
+    "express-session": "^1.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^9.0.0",
+    "sanitize-html": "^2.17.0"
   },
   "devDependencies": {
-    "nodemon": "2.0.7"
+    "nodemon": "^2.0.22"
   }
 }
