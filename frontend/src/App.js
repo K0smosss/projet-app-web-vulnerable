@@ -146,7 +146,7 @@ function App() {
   const ProductCard = ({ product }) => {
     return (
       <div className="product-card">
-        <h3 dangerouslySetInnerHTML={{ __html: product.name }}></h3>
+        <h3> {product.name}</h3>
         <p className="price">{product.price}€</p>
         <p>Stock: {product.stock}</p>
         <button onClick={() => addToCart(product)}>Ajouter au panier</button>
@@ -377,10 +377,10 @@ function App() {
                           {new Date(review.date).toLocaleDateString('fr-FR')}
                         </span>
                       </div>
-                      <div
-                        className="review-comment"
-                        dangerouslySetInnerHTML={{ __html: review.comment }}
-                      />
+                      <div className="review-comment">
+                          {review.comment}
+                      </div>
+
                     </div>
                   ))}
                 </div>

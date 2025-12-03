@@ -537,4 +537,17 @@ npm audit fix --force
 ```
 Cela va mettre à jour les versions des modules npm et donc corriger les vulnérabilités liées à ces modules.
 
-## 16. 
+## 16. Problème de cookies
+Dans le code on peut voir qu'il y a plusieurs vulnérabilités concernant les cookies. Par exemple, HttpOnly est à false donc les cookies peuvent être lus par le JS côté client ce qui augmente le risque de XSS pour voler la session. Il n'y a pas de path ni de secure.
+
+### Comment corriger ? 
+```js 
+cookie: {
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        path:"/"
+    }
+```
+Ici on a mit httpOnly a true et secure pour indiquer que les cookies doivent être envoyé que sur des connexions Https. Le path permet d'indiquer pour quelle partie du site le cookie doit être envoyé ici / pour dire qu'il faut envoyer à toutes les urls du domaine.
+

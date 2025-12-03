@@ -55,9 +55,10 @@ app.use(session({
     resave: false,
     saveUninitialized: true,
     cookie: {
-        secure: false,
-        httpOnly: false,
-        maxAge: 30 * 24 * 60 * 60 * 1000
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        path:"/"
     }
 }));
 
@@ -211,7 +212,7 @@ app.post('/api/products/:id/review', (req, res) => {
     const productId = parseInt(req.params.id);
     const { rating } = req.body;
     let { comment } = req.body;
-    
+
     comment = sanitizeHtml(comment, {
         allowedTags: [],
         allowedAttributes: {}
