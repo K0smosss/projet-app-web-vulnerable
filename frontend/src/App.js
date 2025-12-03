@@ -36,14 +36,10 @@ function App() {
 
   const handleSearch = async () => {
     try {
-      const filtered = products.filter(p => {
-        try {
-          return eval(`p.name.toLowerCase().includes('${searchQuery}'.toLowerCase())`);
-        } catch(e) {
-          return false;
-        }
-      });
-      setProducts(filtered);
+      const filtered = products.filter(p =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setProducts(filtered);
     } catch (error) {
       console.error('Erreur recherche:', error);
     }
@@ -93,6 +89,12 @@ function App() {
       });
 
       const data = await response.json();
+
+      if (!data.success) {
+        alert(data.message);
+        return;
+      }
+
       alert('Inscription réussie ! Vous pouvez maintenant vous connecter.');
       setView('login');
     } catch (error) {
@@ -265,9 +267,6 @@ function App() {
             <p>
               Pas de compte ? <button onClick={() => setView('register')}>S'inscrire</button>
             </p>
-            <p style={{fontSize: '0.8em', color: '#666'}}>
-              Test: admin / admin123
-            </p>
           </div>
         )}
 
@@ -337,7 +336,7 @@ function App() {
             </button>
 
             <div className="product-details-card">
-              <h2 dangerouslySetInnerHTML={{ __html: selectedProduct.name }}></h2>
+              <h2>{selectedProduct.name }</h2>
               <p className="price" style={{fontSize: '2em', color: '#007bff', margin: '20px 0'}}>
                 {selectedProduct.price}€
               </p>
