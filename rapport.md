@@ -221,7 +221,7 @@ if (!MONGODB_URI) throw new Error("MONGODB_URI non défini !");
 if (!ADMIN_API_KEY) throw new Error("ADMIN_API_KEY non défini !");
 ```
 
-# 8. IDOR (Insecure Direct Object Reference) (Backend)
+## 8. IDOR (Insecure Direct Object Reference) (Backend)
 Une vulnérabilité de type IDOR est un problème de contrôle de droits, qui apparait lorsqu’une référence directe à un objet (fichiers, informations personnelles, etc.) peut être contrôlée par un utilisateur.
 
 Cette vulnérabilité se trouve ici dans le backend :
@@ -292,7 +292,7 @@ app.post('/api/checkout', (req, res) => {
 
 Ici on utilise donc l'user id qui provient de la session JWT et non de la requête.
 
-# 9. Possible de s'inscrire avec le même nom d'utilisateur et même email plusieurs fois (Backend + Frontend)
+## 9. Possible de s'inscrire avec le même nom d'utilisateur et même email plusieurs fois (Backend + Frontend)
 Dans le backend, nous pouvons voir qu'il est possible de s'inscrire plusieurs fois avec le même nom d'utilisateur et le même email, ce qui devrait normalement ne pas être possible :
 ```javascript
 app.post('/api/register', (req, res) => {
@@ -354,7 +354,7 @@ Ici on fait un GET sur /api/debug. On peut ainsi voir qu'on a accès à l'intég
 ### Comment corriger cette vulnérabilité ?
 Cet endpoint est donc grave, il faut le retirer, ou bien mettre une sorte d'authentification afin de pouvoir GET. On peut également debug en utilisant la console serveur (long mais sécurisé). Pour ma part nous allons tout simplement retirer cet endpoint par précaution.
 
-# 10. Mot de passe stockés en clair dans la base de données.
+## 10. Mot de passe stockés en clair dans la base de données.
 Dans le code, on peut apercevoir que les mots de passes de la base de données sont stockés en clair.
 
 ```js
@@ -422,7 +422,7 @@ app.post('/api/login', async (req, res) => {
 ```
 Ici, on vérifie si le mot de passe fourni par l’utilisateur correspond au mot de passe hashé stocké dans la base de données. Si la comparaison est réussie, l’utilisateur est authentifié. 
 
-# 11. Le backend autorise l'usage de mots de passe faibles au moment de l'inscription (Backend)
+## 11. Le backend autorise l'usage de mots de passe faibles au moment de l'inscription (Backend)
 Au moment de l'inscription, nous pouvons mettre des mots de passe très faible (8 caractères ou moins). C'est une faille réelle et on appelle cela le Weak password policy.
 
 **Pourquoi est-ce grave ?** : Cette faille peut typiquement mener à du bruteforce et donc la compromission de comptes utilisateur car les mots de passe seront facile à deviner.
@@ -444,7 +444,7 @@ Ci-dessus, nous pouvons voir que nous avons bien mit une vérification qui perme
 
 La vérification marche bien. Pour améliorer ceci on peut également exiger minimum un caractère special dans le mot de passe et une majuscule par exemple !
 
-# 12. Affichage de credentials dans la page de login
+## 12. Affichage de credentials dans la page de login
 Dans la page de login, on peut voir la mention "Test:admin / admin123" qui est le nom d'utilisateur de l'admin ainsi que son mot de passe. Il ne faut jamais afficher des identifiants en clair que ce soit dans le code source de la page ou dans la page directement
 
 ![alt text](image-11.png)
@@ -460,12 +460,12 @@ Pour corriger cela, il suffit simplement de supprimer ceci et de ne jamais mettr
 ![alt text](image-12.png)
 Nous avons supprimé cette ligne.
 
-# 13. Endpoint /api/users qui permet de voir la liste des utilisateurs
+## 13. Endpoint /api/users qui permet de voir la liste des utilisateurs
 Il y a l'endpoint /api/users qui nous permet de voir la base de données entière avec tous les utilisateurs, testons une requête GET sur cet endpoint :
 ![alt text](image-13.png)
 On peut voir que n'importe qui peut y accéder, je n'étais même pas connecter. Il faut donc supprimer /api/users pour une question de sécurité.
 
-# 14. Aucune vérification dans /api/admin/stats
+## 14. Aucune vérification dans /api/admin/stats
 Sur la route /api/admin/stats, nous pouvons voir que nous pouvons voir les statistiques que seul l'admin est censé voir alors que nous ne sommes pas authentifié.
 ![alt text](image-14.png)
 
@@ -523,7 +523,7 @@ Maintenant essayons avec un user non admin.
 Accès interdit car l'user n'est pas admin. Notre middleware fonctionne parfaitement. 
 L'user admin lui est toujours autorisé à se connecter donc tout fonctionne ! 
 
-# 15. Vulnérabilités dans les modules npm
+## 15. Vulnérabilités dans les modules npm
 Nous pouvons voir des vulnérabilités dans les modules npm. Pour voir en détail il suffit simplement d'utiliser la commande
 ```powershell 
 npm audit
@@ -533,5 +533,8 @@ Ensuite on a tous les modules vulnérables ainsi que la description des vulnéra
 ### Comment corriger cela ?
 Afin de corriger cela, il suffit de taper la commande 
 ```powershell
-npm audit
+npm audit fix --force
 ```
+Cela va mettre à jour les versions des modules npm et donc corriger les vulnérabilités liées à ces modules.
+
+## 16. 
