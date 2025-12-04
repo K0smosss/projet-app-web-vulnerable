@@ -1,14 +1,15 @@
-# Rapport détaillé sur les différentes vulnérabilités recensées + comment les corriger 
-Les corrections se trouveront sur la branch secure du projet git. 
-
+# Fichier qui liste les vulnérabilités critiques recensées
+Ce fichier liste toutes les vulnérabilités que nous avons recensées dans cette application web ainsi que les corrections concernant les différentes vulnérabilités. Nous n'avons pas tout mit car il y en a beaucoup trop, nous avons mit les plus pertinentes. Les corrections sont normalement fonctionnelles. Pour un rapport plus détaillé avec intro + vuln + conclusion => Voir le rapport.
+Les failles ci-dessous sont des failles qui ont été recensé dans le backend, dans le frontend et dans le Docker. Tout est donc mélangé pour une question de simplicité. Seul la criticité et la pertinence compte.
 # Liste de toutes les vulnérabilités que nous avons trouvés 
 
-## 1. Faille XSS 
+## 1. Faille XSS (Backend + Frontend) => Critique
 Nous avons une faille XSS dans cette application web, plus précisément dans la section avis. Pour rappel, une attaque de cross-site scripting (XSS) est une attaque dans laquelle un·e attaquant·e parvient à faire exécuter du code malveillant par un site cible comme s'il faisait partie du site lui-même
 
 ### Démonstration XSS
 
-![alt text](image-1.png) ![alt text](image-2.png)
+<img src="img/image-1.png" width="400px"> <img src="img/image-2.png" width="400px">
+
 On peut voir ici qu'on a bien exploité la faille. La faille existe car l'application ne filtre ou n'encode pas les entrées utilisateur, ce qui nous permet d'injecter du code javascript malveillant. Nous pouvons faire beaucoup de choses avec les failles XSS : vol de cookies, faire des redirections, modifier une interface etc.
 
 ### Ou se trouve cette faille XSS et comment corriger la corriger ?
@@ -76,11 +77,12 @@ Cela permet de dire qu'on ne veut aucune balise HTML dans le texte. Elles seront
 
 Après retest, la faille XSS a donc été corrigée car quand nous tentons de mettre du code html ça ne met plus rien.
 
-## 2. Injection SQL (Backend)
+## 2. Injection SQL (Backend) => Critique
 Il y a également une injection SQL dans cette application web sur la page de connexion. L'injection SQL est une cyberattaque qui consiste à injecter dans une requête SQL des morceaux de codes non filtrés ce qui va permettre à l'attaquant de faire des requêtes non légitimes, comme par exemple se connecter au compte admin sans avoir nécessairement besoin du mot de passe ou afficher la BDD.
 
 ### Démonstration SQL
-![alt text](image.png) ![alt text](image-3.png)
+<img src="img/imagesql.png" width="400px"> <img src="img/image-3.png" width="400px">
+
 Nous pouvons voir ici que la requête utilisée nous connecte à l’utilisateur admin sans connaître son mot de passe.
 L’injection va couper la requête SQL, forcer une condition toujours vraie, puis commenter le reste de la vérification :
 ```sql
@@ -99,7 +101,7 @@ if (username.includes("' OR '1'='1")) {
 }
 ```
 
-## 3. Utilisation de la fonction eval() (Backend) (Frontend)
+## 3. Utilisation de la fonction eval() (Backend + Frontend) (Critique)
 Dans le frontend et le backend, on peut voir qu'il y a l'utilisation de la fonction eval() qui permet d'exécuter du code Javascript arbitraire. Un utilisateur malveillant peut injecter du code javascript et exécuter n'importe quoi sur le serveur. 
 
 Ci-dessous le code vulnérable dans le backend :
@@ -142,7 +144,7 @@ const filtered = products.filter(p =>
 ```
 Cette méthode devrait ainsi permettre de pouvoir rechercher les articles et les filtrer de manière simple et sans utiliser de fonctions dangereuses.
 
-## 4. Version node beaucoup trop ancienne dans les Dockerfile
+## 4. Version node beaucoup trop ancienne dans les Dockerfile (Dockerfile) => Grave
 Dans le dockerfile, la version de nodejs est une version beaucoup trop ancienne, ce qui peut conduire à des problèmes de sécurité potentiels comme des vulnérabilités liés à cette version.
 ```Docker
 FROM node:16
@@ -154,7 +156,7 @@ Pour corriger ce problème, cela va être très simple. Il suffit simplement de 
 FROM node:24-alpine
 ```
 
-## 5. Container exécuté en tant que root
+## 5. Container exécuté en tant que root (Dockerfile) => Grave
 Par défaut tous les utilisateurs tournent avec l'utilisateur root, donc si l'application est compromise l'attaquant obtient les accès avec l'utilisateur root sur le système hôte.
 
 ### Comment corriger ce problème (Rootless)?
@@ -168,25 +170,7 @@ USER nodejs
 ```
 Cela permettra ainsi de lancer le conteneur avec l'utilisateur nodejs et non root et donc atténuer les risques s'il y a compromission.
 
-## 6. Secrets dans les Dockerfile (JWT, SESSION_SECRET)
-Dans les Dockerfile, on peut voir qu'il y a des clés Secrets (jetons JWT...) affichés en clair dans le Dockerfile. 
-
-Dockerfile backend
-```Docker
-    ENV NODE_ENV=production
-    ENV JWT_SECRET=my-super-secret-jwt-key-12345
-    ENV SESSION_SECRET=my-session-secret-key
-```
-Dockerfile frontend
-```Docker
-    ENV REACT_APP_API_KEY=frontend-api-key-123456
-```
-C'est problématique les clés secrètes sont en clair donc visible clairement par n'importe qui (si sur Github), il peut y avoir des clés API, mot de passe base de données etc. Un utilisateur malveillant peut donc utiliser les clés secrètes pour pouvoir avoir un accès sur notre base de données par exemple.
-
-### Comment corriger ce problème ?
-Pour corriger ce problème, il suffit de faire un fichier .env et d'y insérer toutes les secrets à l'intérieur puis à les changer comme variable d'environnement 
-
-## 7. Secrets en clair dans le backend (Backend)
+## 6. Secrets en clair dans le backend (Backend) => Grave
 Dans le code du backend on peut voir que les secrets sont affichés en clair, si la variable d'environnement n'était pas défini, cela prenait une valeur codée en dure, la clé secrète ADMIN_API_KEY était codée en dur :
 ```javascript
 const PORT = process.env.PORT || 5001;
@@ -221,7 +205,7 @@ if (!MONGODB_URI) throw new Error("MONGODB_URI non défini !");
 if (!ADMIN_API_KEY) throw new Error("ADMIN_API_KEY non défini !");
 ```
 
-## 8. IDOR (Insecure Direct Object Reference) (Backend)
+## 7. IDOR (Insecure Direct Object Reference) (Backend) => Critique
 Une vulnérabilité de type IDOR est un problème de contrôle de droits, qui apparait lorsqu’une référence directe à un objet (fichiers, informations personnelles, etc.) peut être contrôlée par un utilisateur.
 
 Cette vulnérabilité se trouve ici dans le backend :
@@ -251,12 +235,14 @@ app.post('/api/checkout', (req, res) => {
 La raison est que nous faisons confiance au client pour envoyer l'ID utilisateur, ce qu'il ne faut surtout pas faire.
 
 ### Demonstration 
-![alt text](image-4.png)
+<img src="img/image-4.png" width="400px">
+
 Ici on peut voir une requête POST qui permet de payer un article qui est dans le panier. On peut voir quelque chose d'intéressant le "UserId":3. Le UserId correspond à l'identifiant de notre compte utilisateur, ici c'est 3 (Par exemple, le compte Admin peut être 1). Essayons de modifier l'userId en 1.
-![alt text](image-5.png)
+<img src="img/image-5.png" width="400px">
 
 Envoyons la requête pour voir le résultat :
-![alt text](image-6.png)
+<img src="img/image-6.png" width="400px">
+
 On peut voir que l'on a bien effectué une commande avec l'UserId 1. C'est donc une IDOR.
 
 ### Pour est-ce grave et comment la corriger ?
@@ -292,7 +278,7 @@ app.post('/api/checkout', (req, res) => {
 
 Ici on utilise donc l'user id qui provient de la session JWT et non de la requête.
 
-## 9. Possible de s'inscrire avec le même nom d'utilisateur et même email plusieurs fois (Backend + Frontend)
+## 8. Possible de s'inscrire avec le même nom d'utilisateur et même email plusieurs fois (Backend + Frontend) => Modéré
 Dans le backend, nous pouvons voir qu'il est possible de s'inscrire plusieurs fois avec le même nom d'utilisateur et le même email, ce qui devrait normalement ne pas être possible :
 ```javascript
 app.post('/api/register', (req, res) => {
@@ -321,7 +307,7 @@ const existingUser = db.users.find(
     }
 ```
 Maintenant, si on essaye de se créer un compte avec un nom d'utilisateur ou un mot de passe déjà existant, cela causera une erreur.
-![alt text](image-7.png)
+<img src="img/image-7.png" width="400px">
 
 **Correction frontend**
 Il reste également à corriger cette vulnérabilité sur le frontend car même si la requête renvoie une erreur 400, cela affiche tout de même inscription réussie côté client.
@@ -336,7 +322,7 @@ Il suffit simplement de rajouter cette ligne de code dans le App.js dans la part
 
 Exemple :
 
-![alt text](image-8.png)
+<img src="img/image-8.png" width="400px">
 
 On peut donc voir que l'inscription n'aboutit pas car le nom d'utilisateur ou l'email est déjà utilisé.
 
@@ -347,14 +333,15 @@ L'endpoint /api/debug est un endpoint critique car il nous permet d'avoir énorm
 - La database entière avec la liste des users etc.
 
 ### Démonstration
-![alt text](image-9.png)
+<img src="img/image-9.png" width="400px">
+
 Ici on fait un GET sur /api/debug. On peut ainsi voir qu'on a accès à l'intégralité des informations de notre serveur web (les versions utilisés, les databases...).
 
 
 ### Comment corriger cette vulnérabilité ?
 Cet endpoint est donc grave, il faut le retirer, ou bien mettre une sorte d'authentification afin de pouvoir GET. On peut également debug en utilisant la console serveur (long mais sécurisé). Pour ma part nous allons tout simplement retirer cet endpoint par précaution.
 
-## 10. Mot de passe stockés en clair dans la base de données.
+## 9. Mot de passe stockés en clair dans la base de données. (Backend) => Grave
 Dans le code, on peut apercevoir que les mots de passes de la base de données sont stockés en clair.
 
 ```js
@@ -422,7 +409,7 @@ app.post('/api/login', async (req, res) => {
 ```
 Ici, on vérifie si le mot de passe fourni par l’utilisateur correspond au mot de passe hashé stocké dans la base de données. Si la comparaison est réussie, l’utilisateur est authentifié. 
 
-## 11. Le backend autorise l'usage de mots de passe faibles au moment de l'inscription (Backend)
+## 10. Le backend autorise l'usage de mots de passe faibles au moment de l'inscription (Backend) => Grave
 Au moment de l'inscription, nous pouvons mettre des mots de passe très faible (8 caractères ou moins). C'est une faille réelle et on appelle cela le Weak password policy.
 
 **Pourquoi est-ce grave ?** : Cette faille peut typiquement mener à du bruteforce et donc la compromission de comptes utilisateur car les mots de passe seront facile à deviner.
@@ -440,14 +427,14 @@ if (password.length < 8) {
 ```
 Ci-dessus, nous pouvons voir que nous avons bien mit une vérification qui permet de retourner une erreur 400 si l'user met un mdp trop court.
 
-![alt text](image-10.png)
+<img src="img/image-10.png" width="400px">
 
 La vérification marche bien. Pour améliorer ceci on peut également exiger minimum un caractère special dans le mot de passe et une majuscule par exemple !
 
-## 12. Affichage de credentials dans la page de login
+## 11. Affichage de credentials dans la page de login (Frontend) => Critique
 Dans la page de login, on peut voir la mention "Test:admin / admin123" qui est le nom d'utilisateur de l'admin ainsi que son mot de passe. Il ne faut jamais afficher des identifiants en clair que ce soit dans le code source de la page ou dans la page directement
 
-![alt text](image-11.png)
+<img src="img/image-11.png" width="400px">
 
 ### Comment corriger ? 
 Pour corriger cela, il suffit simplement de supprimer ceci et de ne jamais mettre de creds en clair sur les pages ou autre.
@@ -457,17 +444,20 @@ Pour corriger cela, il suffit simplement de supprimer ceci et de ne jamais mettr
               Test: admin / admin123
             </p>
 ```
-![alt text](image-12.png)
+<img src="img/image-12.png" width="400px">
+
 Nous avons supprimé cette ligne.
 
-## 13. Endpoint /api/users qui permet de voir la liste des utilisateurs
+## 12. Endpoint /api/users qui permet de voir la liste des utilisateurs (Backend) => Critique
 Il y a l'endpoint /api/users qui nous permet de voir la base de données entière avec tous les utilisateurs, testons une requête GET sur cet endpoint :
-![alt text](image-13.png)
+<img src="img/image-13.png" width="400px">
+
 On peut voir que n'importe qui peut y accéder, je n'étais même pas connecter. Il faut donc supprimer /api/users pour une question de sécurité.
 
-## 14. Aucune vérification dans /api/admin/stats
+## 13. Aucune vérification dans /api/admin/stats (Backend) => Critique
 Sur la route /api/admin/stats, nous pouvons voir que nous pouvons voir les statistiques que seul l'admin est censé voir alors que nous ne sommes pas authentifié.
-![alt text](image-14.png)
+
+<img src="img/image-14.png" width="400px">
 
 Ceci est très grave car si un utilisateur non légitime arrive a GET cet endpoint, il récupèrera toutes les informations sur les utilisateurs tel que les emails, leur rôles etc.
 
@@ -516,14 +506,18 @@ Maintenant on met deux middleware entre notre route /api/admin/stats :
 app.get('/api/admin/stats', requireAuth, requireAdmin, (req, res)
 ```
 Comme ceci, maintenant essayons de faire une requête vers /api/admin/stats sans être authentifié :
-![alt text](image-15.png)
+
+<img src="img/image-15.png" width="400px">
+
 On peut voir que ça nous retourne un message d'erreur car nous ne sommes pas connectés. 
 Maintenant essayons avec un user non admin.
-![alt text](image-16.png)
+
+<img src="img/image-16.png" width="400px">
+
 Accès interdit car l'user n'est pas admin. Notre middleware fonctionne parfaitement. 
 L'user admin lui est toujours autorisé à se connecter donc tout fonctionne ! 
 
-## 15. Vulnérabilités dans les modules npm
+## 14. Vulnérabilités dans les modules npm (Frontend + Backend) => Modéré
 Nous pouvons voir des vulnérabilités dans les modules npm. Pour voir en détail il suffit simplement d'utiliser la commande
 ```powershell 
 npm audit
@@ -537,7 +531,7 @@ npm audit fix --force
 ```
 Cela va mettre à jour les versions des modules npm et donc corriger les vulnérabilités liées à ces modules.
 
-## 16. Problème de cookies
+## 15. Problème de cookies (Backend) => Modéré
 Dans le code on peut voir qu'il y a plusieurs vulnérabilités concernant les cookies. Par exemple, HttpOnly est à false donc les cookies peuvent être lus par le JS côté client ce qui augmente le risque de XSS pour voler la session. Il n'y a pas de path ni de secure.
 
 ### Comment corriger ? 
@@ -551,3 +545,137 @@ cookie: {
 ```
 Ici on a mit httpOnly a true et secure pour indiquer que les cookies doivent être envoyé que sur des connexions Https. Le path permet d'indiquer pour quelle partie du site le cookie doit être envoyé ici / pour dire qu'il faut envoyer à toutes les urls du domaine.
 
+## 16. IDOR + Excessive data exposure sur /api/users/:id (Backend + Frontend) => Critique 
+Vulnérabilité car tout le monde peut voir les différents users, leurs emails, leur mot de passe et autre. C'est critique car normalement seul un admin devrait avoir le droit de consulter ceci.
+
+### Démonstration
+<img src="img/image.png" width="400px">
+
+On peut voir ici que nous pouvons effectuer des recherches sur différents comptes (ici j'ai recherché le compte admin pour test) avec un utilisateur lambda ce qui ne devrait normalement pas être possible. On peut voir également que plusieurs infos sensible sont dévoilées tel que le mot de passe, il faut retirer cela.
+
+### Comment corriger cette vulnérabilité ?
+Afin de corriger cette vulnérabilité, il suffit de rajouter une vérification qui vérifie que, si l'user n'est pas un admin, alors il n'a le droit d'effectuer une recherche qu'avec son compte. 
+
+```js 
+app.get('/api/users/:id', requireAuth, (req, res) => {
+    const userId = parseInt(req.params.id);
+
+    const user = db.users.find(u => u.id === userId);
+
+    if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    if (req.user.role !== "admin" && req.user.id !== userId) {
+        return res.status(403).json({ message: "Accès interdit" });
+    }
+
+    const safeUser = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+    };
+
+    res.json(safeUser);
+});
+```
+
+Ici nous avons bien corrigé la vulnérabilité en mettant un middleware pour vérifier que l'user est bien connecté, ensuite nous vérifions si l'user a le rôle admin. Si il l'a alors la requete passe et ça affiche l'user demandé (avec le password en moins). Sinon ça retourne une erreur. 
+
+Mais dans notre cas, la requête se fait sans cookies donc cela va poser un problème pour la correction. Donc il va falloir mettre ce bout de code dans le code React : 
+
+```js
+const response = await fetch(`${API_URL}/users/${userId}`, {
+  headers: {
+    'Authorization': `Bearer ${localStorage.getItem('token')}`
+  }
+});
+```
+Ce qui nous permettra de pouvoir faire la requête avec un token Jwt. 
+
+Maintenant si un utilisateur essaye de faire une requête pour voir un autre user alors qu’il n’est pas admin, ce message apparait :
+
+<img src="img/image-20.png" width="400px">
+
+C'est également à corriger côté Frontend car le mot de passe apparait sur la page on peut voir le mot de passe de notre propre utilisateur. Il suffit simplement de supprimer cela.
+
+## 17. Cors trop permissif (Backend) => Modéré
+Configurer CORS avec :
+
+```js
+origin: "*"
+```
+
+revient à dire :
+"N'importe quel site web, n'importe où sur Internet, peut envoyer des requêtes à mon API."
+
+C’est une grave erreur de sécurité. Des sites malveillants peuvent utiliser notre api. Si cookies de session CSRF garanti.
+
+### Comment corriger cela ?
+Afin de corriger cela, il suffit simplement de mettre http://localhost:3000 ce qui veut dire qu'il faut autoriser uniquement le frontend.
+
+## 18. Local file Inclusion (Backend) => Critique
+L’endpoint /api/files/:filename est vulnérable à une Local File Inclusion (LFI), car le chemin du fichier était construit directement à partir des données fournies par l’utilisateur, sans validation. Cela permettait de lire n’importe quel fichier du serveur (ex. ../../etc/passwd ou server.js).
+
+### Comment corriger cette vuln 
+Nous avons corrigé cette vulnérabilité en normalisant le chemin et en vérifiant que le fichier demandé se trouve bien dans le répertoire autorisé (uploads). Toute tentative de sortir de ce dossier est désormais bloquée, empêchant ainsi tout accès non légitime aux fichiers sensibles du système.
+
+```js
+app.get('/api/files/:filename', (req, res) => {
+    const safeBase = path.join(__dirname, "uploads");
+    const requestedPath = path.normalize(path.join(safeBase, req.params.filename));
+
+    if (!requestedPath.startsWith(safeBase)) {
+        return res.status(400).json({ message: "Chemin interdit" });
+    }
+
+    fs.readFile(requestedPath, 'utf8', (err, data) => {
+        if (err) {
+            res.status(404).json({ message: "Fichier non trouvé" });
+        } else {
+            res.send(data);
+        }
+    });
+});
+```
+
+## 19. Secrets exposés dans Compose et sur les Dockerfile (Dockerfile + docker-compose) => Grave
+On peut voir qu'il y a des secrets exposé dans le Dockerfile, ce qui peut être grave. 
+```Docker
+ENV REACT_APP_API_KEY=frontend-api-key-123456
+
+et 
+
+ENV NODE_ENV=production
+ENV JWT_SECRET=my-super-secret-jwt-key-12345
+ENV SESSION_SECRET=my-session-secret-key
+```
+Il faut donc supprimer cette ligne puis importer le fichier .env dans le docker-compose comme ceci : 
+```Docker
+env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - MONGODB_URI=${MONGODB_URI}
+
+et 
+
+env_file:
+      - .env
+    environment:
+      - REACT_APP_API_URL=http://backend:5001
+      - REACT_APP_API_KEY=${REACT_APP_API_KEY}
+```
+Cela nous permettra de ne pas exposer le secrets en clair et d'aller les chercher dans le fichier env. Cela nous garantie une sécurité supplémentaire. Les Secrets dans le fichier Dockerfile ont donc été retiré et ceux du Docker-compose ne sont maintenant plus visible en clair, tout sera stocké sur le fichier .env.
+
+## 20. Stockage de données sensibles en clair (Backend) => Grave
+Dans notre code, on peut voir qu'il y a de nombreuses données qui sont stockées en clair.
+```js
+apiKey: ADMIN_API_KEY et creditCard: '4532-1234-5678-9010'
+```
+Il ne faut jamais stocker de clés API ou de numéros de carte bancaire en clair, car cela expose ces informations à tout utilisateur qui pourrait accéder au code ou à la base de données.
+
+Dans notre projet, nous avons choisi de supprimer ces informations du code et de la base de données afin de sécuriser l’application. Cette approche est volontaire et conforme aux bonnes pratiques de sécurité.

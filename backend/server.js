@@ -17,7 +17,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 
 app.use(cors({
-    origin: '*',
+    origin: 'http://localhost:3000',
     credentials: true
 }));
 
@@ -73,7 +73,6 @@ db.users.push({
     password: bcrypt.hashSync('admin123', 10),
     email: 'admin@ecommerce.com',
     role: 'admin',
-    apiKey: ADMIN_API_KEY
 });
 
 db.users.push({
@@ -82,7 +81,6 @@ db.users.push({
     password: bcrypt.hashSync('user123', 10),
     email: 'user@example.com',
     role: 'customer',
-    creditCard: '4532-1234-5678-9010'
 });
 
 db.products = [
@@ -196,16 +194,27 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-app.get('/api/users/:id', (req, res) => {
-    const userId = req.params.id;
+app.get('/api/users/:id', requireAuth, (req, res) => {
+    const userId = parseInt(req.params.id);
 
-    const user = db.users.find(u => u.id == userId);
+    const user = db.users.find(u => u.id === userId);
 
-    if (user) {
-        res.json(user);
-    } else {
-        res.status(404).json({ message: 'Utilisateur non trouvé' });
+    if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé' });
     }
+
+    if (req.user.role !== "admin" && req.user.id !== userId) {
+        return res.status(403).json({ message: "Accès interdit" });
+    }
+
+    const safeUser = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+    };
+
+    res.json(safeUser);
 });
 
 app.post('/api/products/:id/review', (req, res) => {
@@ -295,15 +304,20 @@ app.get('/api/admin/stats', requireAuth, requireAdmin, (req, res) => {
 });
 
 app.get('/api/files/:filename', (req, res) => {
-    const filename = req.params.filename;
-    const fs = require('fs');
+    const safeBase = path.join(__dirname, "uploads");
+    const requestedPath = path.normalize(path.join(safeBase, req.params.filename));
 
-    try {
-        const content = fs.readFileSync(`./uploads/${filename}`, 'utf8');
-        res.send(content);
-    } catch(e) {
-        res.status(404).json({ message: 'Fichier non trouvé' });
+    if (!requestedPath.startsWith(safeBase)) {
+        return res.status(400).json({ message: "Chemin interdit" });
     }
+
+    fs.readFile(requestedPath, 'utf8', (err, data) => {
+        if (err) {
+            res.status(404).json({ message: "Fichier non trouvé" });
+        } else {
+            res.send(data);
+        }
+    });
 });
 
 app.get('/', (req, res) => {

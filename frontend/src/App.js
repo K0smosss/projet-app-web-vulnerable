@@ -63,9 +63,12 @@ function App() {
       const data = await response.json();
 
       if (data.success) {
+        const { password, ...safeUser } = data.user;
+
         localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        setUser(data.user);
+        localStorage.setItem('user', JSON.stringify(safeUser));
+        
+        setUser(safeUser);
         setView('products');
       } else {
         alert('Identifiants incorrects');
@@ -319,7 +322,11 @@ function App() {
               />
               <button onClick={async () => {
                 const userId = document.getElementById('userId').value;
-                const response = await fetch(`${API_URL}/users/${userId}`);
+                const response = await fetch(`${API_URL}/users/${userId}`, {
+                  headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                  }
+                });
                 const data = await response.json();
                 alert(JSON.stringify(data, null, 2));
               }}>
